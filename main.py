@@ -108,7 +108,7 @@ class MainWindow(QMainWindow):
         self.setup_ui()
 
     def set_variables(self):
-        self.model = Model("gengar.stl")
+        self.model = Model("snorlax_lowres.stl")
         self.cam_original = Camera()
         self.cam = Camera() 
         # self.px_base = 1280  #modificar
@@ -383,7 +383,7 @@ class MainWindow(QMainWindow):
 
     def projection_2d(self):
         projection_matrix = np.array([[1, 0, 0, 0],
-                                     [0, 1, 0, 0],
+                                     [0, 1, 0, 0],\
                                      [0, 0, 1, 0]]) 
 
         projection = self.cam.get_intrinsic_matrix() @ projection_matrix @ np.linalg.inv(self.cam.M) @ self.model.model

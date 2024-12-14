@@ -19,8 +19,8 @@ class Camera:
         cx = self.image[0]/2
         cy = self.image[1]/2
 
-        return np.array([[f*sx, f*stheta, f*cx],
-                         [0, f*sy, f*cy],
+        return np.array([[f*sx, f*stheta, cx],
+                         [0, f*sy, cy],
                          [0, 0, 1]])
     
     def update_intrinsic(self, image=None, ccd=None, fd=None, stheta=None):
