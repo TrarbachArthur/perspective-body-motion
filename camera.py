@@ -30,3 +30,7 @@ class Camera:
         self.stheta = stheta if stheta != None else self.stheta
 
         print(self.image, self.ccd, self.focal_dist, self.stheta)
+
+    def reset(self):
+        self.M = np.eye(4)
+        self.update_intrinsic(image=(1280,720), ccd=(36,24), fd=50, stheta=0)

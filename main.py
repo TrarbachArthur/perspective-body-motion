@@ -3,13 +3,31 @@ import matplotlib.pyplot as plt
 from PyQt5.QtWidgets import QApplication, QMainWindow, QGridLayout, QLabel, QWidget, QLineEdit, QHBoxLayout, QVBoxLayout, QPushButton,QGroupBox
 from PyQt5.QtGui import QDoubleValidator
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from mpl_toolkits.mplot3d import Axes3D
+from mpl_toolkits.mplot3d import Axes3D, art3d
 import numpy as np
 
 from math import pi, cos, sin
-
+from model import Model
 from camera import Camera
 ###### Crie suas funções de translação, rotação, criação de referenciais, plotagem de setas e qualquer outra função que precisar
+
+def set_axes_equal(ax):
+        x_limits = ax.get_xlim3d()
+        y_limits = ax.get_ylim3d()
+        z_limits = ax.get_zlim3d()
+
+        x_range = abs(x_limits[1] - x_limits[0])
+        x_middle = np.mean(x_limits)
+        y_range = abs(y_limits[1] - y_limits[0])
+        y_middle = np.mean(y_limits)
+        z_range = abs(z_limits[1] - z_limits[0])
+        z_middle = np.mean(z_limits)
+
+        plot_radius = 0.5*max([x_range, y_range, z_range])
+
+        ax.set_xlim3d([x_middle - plot_radius, x_middle + plot_radius])
+        ax.set_ylim3d([y_middle - plot_radius, y_middle + plot_radius])
+        ax.set_zlim3d([z_middle - plot_radius, z_middle + plot_radius])
 
 def set_plot(ax=None,figure = None,lim=[-2,2]):
     if figure ==None:
@@ -31,15 +49,16 @@ def draw_arrows(point,base,axis,length=1.5):
     # The object base is a matrix, where each column represents the vector
     # of one of the axis, written in homogeneous coordinates (ax,ay,az,0)
 
+    quivers = []
 
     # Plot vector of x-axis
-    axis.quiver(point[0],point[1],point[2],base[0,0],base[1,0],base[2,0],color='red',pivot='tail',  length=length)
+    quivers.append(axis.quiver(point[0],point[1],point[2],base[0,0],base[1,0],base[2,0],color='red',pivot='tail',  length=length))
     # Plot vector of y-axis
-    axis.quiver(point[0],point[1],point[2],base[0,1],base[1,1],base[2,1],color='green',pivot='tail',  length=length)
+    quivers.append(axis.quiver(point[0],point[1],point[2],base[0,1],base[1,1],base[2,1],color='green',pivot='tail',  length=length))
     # Plot vector of z-axis
-    axis.quiver(point[0],point[1],point[2],base[0,2],base[1,2],base[2,2],color='blue',pivot='tail',  length=length)
+    quivers.append(axis.quiver(point[0],point[1],point[2],base[0,2],base[1,2],base[2,2],color='blue',pivot='tail',  length=length))
 
-    return axis
+    return quivers
 
 
 ### Setting printing options
@@ -89,18 +108,17 @@ class MainWindow(QMainWindow):
         self.setup_ui()
 
     def set_variables(self):
-        self.objeto_original = [] #modificar
-        self.objeto = self.objeto_original
+        self.model = Model("gengar.stl")
         self.cam_original = Camera()
         self.cam = Camera() 
-        self.px_base = 1280  #modificar
-        self.px_altura = 720 #modificar
-        self.dist_foc = 50 #modificar
-        self.stheta = 0 #modificar
-        self.ox = self.px_base/2 #modificar
-        self.oy = self.px_altura/2 #modificar
-        self.ccd = [36,24] #modificar
-        self.projection_matrix = [] #modificar
+        # self.px_base = 1280  #modificar
+        # self.px_altura = 720 #modificar
+        # self.dist_foc = 50 #modificar
+        # self.stheta = 0 #modificar
+        # self.ox = self.px_base/2 #modificar
+        # self.oy = self.px_altura/2 #modificar
+        # self.ccd = [36,24] #modificar
+        # self.projection_matrix = [] #modificar
         
     def setup_ui(self):
         # Criar o layout de grade
@@ -272,14 +290,18 @@ class MainWindow(QMainWindow):
         self.canvas1 = FigureCanvas(self.fig1)
 
         ##### Falta acertar os limites do eixo X
-        
+        self.ax1.set_xlim([0, self.cam.image[0]])
+        self.ax1.xaxis.tick_top()
+
         ##### Falta acertar os limites do eixo Y
-        
+        self.ax1.set_ylim([self.cam.image[1], 0])
+
         ##### Você deverá criar a função de projeção 
         object_2d = self.projection_2d()
 
         ##### Falta plotar o object_2d que retornou da projeção
-          
+        self.projection = self.ax1.plot(object_2d[0, :], object_2d[1, :], color = 'r')
+
         self.ax1.grid('True')
         self.ax1.set_aspect('equal')  
         canvas_layout.addWidget(self.canvas1)
@@ -290,8 +312,23 @@ class MainWindow(QMainWindow):
         
         ##### Falta plotar o seu objeto 3D e os referenciais da câmera e do mundo
         
+        #self.ax2.add_collection3d(art3d.Poly3DCollection(self.model.vectors))
+        self.ax2.add_collection3d(art3d.Line3DCollection(self.model.vectors, colors='k', linewidths=0.2, linestyles='-'))
+
+        self.ax2.auto_scale_xyz(self.model.model[0, :], self.model.model[1, :], self.model.model[2, :])
+        set_axes_equal(self.ax2)
+        self.ax2.view_init(elev=45, azim=35)
+        self.ax2.dist = 10
+
+        aux = np.eye(4)
+        draw_arrows(aux[3, :], aux[0:3, :], self.ax2, length=10)
+
+        plt.ion()
+
         self.canvas2 = FigureCanvas(self.fig2)
         canvas_layout.addWidget(self.canvas2)
+
+        self.cam_quivers = draw_arrows(self.cam.M[:, 3], self.cam.M[:, :3], self.ax2, length=8)
 
         # Retornar o widget de canvas
         return canvas_widget
@@ -300,12 +337,12 @@ class MainWindow(QMainWindow):
     ##### Você deverá criar as suas funções aqui
     
     def update_params_intrinsc(self, line_edits):
-        width = line_edits[0].text() if line_edits[0].text() != '' else self.cam.image[0]
-        height = line_edits[1].text() if line_edits[1].text() != '' else self.cam.image[1]
-        x = line_edits[2].text() if line_edits[2].text() != '' else self.cam.ccd[0]
-        y = line_edits[3].text() if line_edits[3].text() != '' else self.cam.ccd[1]
-        focal_dist = line_edits[4].text() if line_edits[4].text() != '' else self.cam.focal_dist
-        stheta = line_edits[5].text() if line_edits[5].text() != '' else self.cam.stheta
+        width = float(line_edits[0].text()) if line_edits[0].text() != '' else self.cam.image[0]
+        height = float(line_edits[1].text()) if line_edits[1].text() != '' else self.cam.image[1]
+        x = float(line_edits[2].text()) if line_edits[2].text() != '' else self.cam.ccd[0]
+        y = float(line_edits[3].text()) if line_edits[3].text() != '' else self.cam.ccd[1]
+        focal_dist = float(line_edits[4].text()) if line_edits[4].text() != '' else self.cam.focal_dist
+        stheta = float(line_edits[5].text()) if line_edits[5].text() != '' else self.cam.stheta
 
         self.cam.update_intrinsic(image=(width, height), ccd=(x,y), fd=focal_dist, stheta=stheta)
 
@@ -313,8 +350,11 @@ class MainWindow(QMainWindow):
 
     def update_world(self,line_edits):
         for i in line_edits:
-            i.text() = '0' if i.text() == '' else i.text()
-        
+            print(i.text())
+            i.setText('0' if i.text() == '' else i.text())
+            print(i.text())
+
+
         Rx = x_rotate(float(line_edits[1].text()))
         Ry = y_rotate(float(line_edits[3].text()))
         Rz = z_rotate(float(line_edits[5].text()))
@@ -328,7 +368,7 @@ class MainWindow(QMainWindow):
 
     def update_cam(self,line_edits):
         for i in line_edits:
-            i.text() = '0' if i.text() == '' else i.text()
+            i.setText('0' if i.text() == '' else i.text())
 
         Rx = x_rotate(float(line_edits[1].text()))
         Ry = y_rotate(float(line_edits[3].text()))
@@ -339,18 +379,51 @@ class MainWindow(QMainWindow):
         # Primeiro realiza a rotação nos eixos da câmera e depois a translação
         self.cam.M = self.cam.M @ Rx @ Ry @ Rz @ T @self.cam_original.M
 
+        self.update_canvas()
+
     def projection_2d(self):
-        return 
-    
-    def generate_intrinsic_params_matrix(self):
-        return 
-    
+        projection_matrix = np.array([[1, 0, 0, 0],
+                                     [0, 1, 0, 0],
+                                     [0, 0, 1, 0]]) 
+
+        projection = self.cam.get_intrinsic_matrix() @ projection_matrix @ np.linalg.inv(self.cam.M) @ self.model.model
+
+        projection = projection/projection[2]
+
+        return projection
 
     def update_canvas(self):
+        # Removing all plots from the 2d projection
+
+        for i in self.projection:
+            i.remove()
+        
+        # re-ploting the 2d projection, with updated values
+        ##### Você deverá criar a função de projeção 
+        object_2d = self.projection_2d()
+
+        ##### Falta plotar o object_2d que retornou da projeção
+        self.projection = self.ax1.plot(object_2d[0, :], object_2d[1, :], color = 'r', linewidth=0.5)
+
+        # Updating 3d plot with new cam values
+        
+        for i in self.cam_quivers:
+            i.remove()
+
+        self.cam_quivers = draw_arrows(self.cam.M[:, 3], self.cam.M[:, :3], self.ax2, length=8)
+
+        ##### Falta acertar os limites do eixo X
+        self.ax1.set_xlim([0, self.cam.image[0]])
+        self.ax1.xaxis.tick_top()
+
+        ##### Falta acertar os limites do eixo Y
+        self.ax1.set_ylim([self.cam.image[1], 0])
+
         return 
     
     def reset_canvas(self):
-        return
+        self.cam.reset()
+        self.update_canvas()
     
 if __name__ == '__main__':
     app = QApplication(sys.argv)
