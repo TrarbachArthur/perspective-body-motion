@@ -317,7 +317,7 @@ class MainWindow(QMainWindow):
 
         self.ax2.auto_scale_xyz(self.model.model[0, :], self.model.model[1, :], self.model.model[2, :])
         set_axes_equal(self.ax2)
-        self.ax2.view_init(elev=45, azim=35)
+        self.ax2.view_init(elev=35, azim=-45)
         self.ax2.dist = 10
 
         aux = np.eye(4)
